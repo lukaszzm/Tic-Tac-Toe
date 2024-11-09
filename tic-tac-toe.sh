@@ -9,7 +9,7 @@ empty=0
 x_player=1
 o_player=2
 
-function initialize_matrix {
+function initialize_game {
   local max=$((rows*columns))
 
     for ((i=0; i<max; i++)); do
@@ -26,7 +26,8 @@ function print_guide {
     echo "-----------"
     echo " 7 | 8 | 9 "
 
-    echo "To make a move, enter the number of the place you want to put your symbol in"
+    echo "MOVE: To make a move, enter the number of the place you want to put your symbol in"
+    echo "SAVE: To save the game, type 'save'"
     echo "-----------------------------------------------------------------------------"
 }
 
@@ -147,6 +148,12 @@ function player_move {
     return
   fi
 
+  if [ "$command" = "save" ]; then
+    save_game "$player"
+    player_move "$player"
+    return
+  fi
+
   re='^[1-9]$'
 
   if ! [[ $command =~ $re ]] ; then
@@ -178,7 +185,104 @@ function play_game {
   done
 }
 
+function load_game {
+  echo "Enter the name of the file you want to load the game from: "
+  read -r file
+
+  local file_path="$file".txt
+
+  if [ ! -f "$file_path" ]; then
+    echo "File not found!"
+    return
+  fi
+
+  echo "Loading the game from $file..."
+
+  read -r saved_board_line < "$file_path"
+  read -r saved_player_turn < <(sed -n '2p' "$file_path")
+
+  IFS=' ' read -r -a saved_board <<< "$saved_board_line"
+
+  validate_board "${saved_board[@]}"
+  validate_player_turn "$saved_player_turn"
+
+  echo "Game loaded successfully!"
+
+  for ((i=0; i<${#saved_board[@]}; i++)); do
+    echo "saved_board[$i]: ${saved_board[$i]}"
+  done
+
+  echo "saved_player_turn: $saved_player_turn"
+  exit 0
+
+}
+
+function validate_board {
+  local saved_board=("$@")
+
+  local error_message="Your save file is corrupted, board is invalid!"
+
+  echo "Length: ${#saved_board[@]}"
+  echo "Expected length: $((rows*columns))"
+  if [ ${#saved_board[@]} -ne $((rows*columns)) ]; then
+    echo "$error_message"
+    exit 1
+  fi
+
+  for ((i=0; i<${#saved_board[@]}; i++)); do
+    if [ "${saved_board[$i]}" -ne $empty ] && [ "${saved_board[$i]}" -ne $x_player ] && [ "${saved_board[$i]}" -ne $o_player ]; then
+      echo "$error_message"
+      exit 1
+    fi
+  done
+}
+
+function validate_player_turn {
+  local player_turn=$1
+
+  local error_message="Your save file is corrupted, player's turn is invalid!"
+
+  if [ "$player_turn" -ne $x_player ] && [ "$player_turn" -ne $o_player ]; then
+    echo "$error_message"
+    exit 1
+  fi
+}
+
+function save_game  {
+    local player_turn=$1
+
+  echo "Enter the name of the file you want to save the game in: "
+  read -r file
+
+  echo "Saving the game in $file..."
+
+  {
+  echo "${board[@]}"
+  echo "$player_turn"
+} > "file".txt
+
+  echo "Game saved successfully!, type 'continue' to continue playing or anything else to exit:"
+  read -r command
+
+  if [ "$command" = "continue" ]; then
+    return
+  fi
+
+  exit 0
+}
+
 echo "Hello, welcome to Tic-Tac-Toe game!"
 
-initialize_matrix
+echo "Type 'new' to start a new game or 'load' to load a saved game: "
+read -r command
+
+if [ "$command" = "new" ]; then
+  initialize_game
+elif [ "$command" = "load" ]; then
+  load_game
+else
+  echo "Invalid command, exiting..."
+  exit 1
+fi
+
 play_game
