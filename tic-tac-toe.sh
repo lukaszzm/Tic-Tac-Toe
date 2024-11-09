@@ -71,7 +71,6 @@ function print_symbol {
     fi
 }
 
-# TODO: Implement this function based on the game rules with the current board state (1D array)
 function check_winner {
 
   # Check rows
