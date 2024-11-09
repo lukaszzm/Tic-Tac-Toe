@@ -9,12 +9,15 @@ empty=0
 x_player=1
 o_player=2
 
-function initialize_game {
+function new_game {
   local max=$((rows*columns))
 
     for ((i=0; i<max; i++)); do
         board[$i]=$empty
     done
+
+  play_game $x_player
+  return
 }
 
 function print_guide {
@@ -73,7 +76,6 @@ function print_symbol {
 }
 
 function check_winner {
-
   # Check rows
   for ((i=0; i<rows; i++)); do
     local row=$((i*columns))
@@ -127,8 +129,6 @@ function check_draw {
     fi
   done
 
-  echo "is_full: $is_full"
-
   if [ "$is_full" = true ]; then
     echo "It's a draw!"
     exit 0
@@ -178,10 +178,71 @@ function player_move {
   check_draw
 }
 
+function computer_move {
+  local player=$1
+
+  echo "Computer's turn..."
+
+  local place=$((RANDOM % 9))
+
+  while [ "${board[$place]}" -ne $empty ]; do
+    place=$((RANDOM % 9))
+  done
+
+  sleep 1
+  board[$place]=$player
+
+  print_matrix
+
+  check_winner "$player"
+  check_draw
+}
+
 function play_game {
+  local first_player=$1
+
+  echo "Do you want to play with a friend or with the computer? (type 'friend' or 'computer'): "
+  read -r command
+
+  if [ "$command" = "friend" ]; then
+    play_with_friend "$first_player"
+  elif [ "$command" = "computer" ]; then
+    play_with_computer "$first_player"
+  else
+    echo "Invalid command, exiting..."
+    exit 1
+  fi
+}
+
+function play_with_friend {
+  local first_turn=$1
+
+  echo "You chose to play with a friend, let's start the game!"
+
   while true; do
-    player_move $x_player
-    player_move $o_player
+    if [ "$first_turn" -eq $x_player ]; then
+      player_move $x_player
+      player_move $o_player
+    else
+      player_move $o_player
+      player_move $x_player
+    fi
+  done
+}
+
+function play_with_computer {
+  local first_turn=$1
+
+  echo "You chose to play with the computer, let's start the game with your first move!"
+
+  while true; do
+    if [ "$first_turn" -eq $x_player ]; then
+      player_move $x_player
+      computer_move $o_player
+    else
+      player_move $o_player
+      computer_move $x_player
+    fi
   done
 }
 
@@ -193,7 +254,7 @@ function load_game {
 
   if [ ! -f "$file_path" ]; then
     echo "File not found!"
-    return
+    exit 0
   fi
 
   echo "Loading the game from $file..."
@@ -206,15 +267,12 @@ function load_game {
   validate_board "${saved_board[@]}"
   validate_player_turn "$saved_player_turn"
 
+  board=("${saved_board[@]}")
+
   echo "Game loaded successfully!"
 
-  for ((i=0; i<${#saved_board[@]}; i++)); do
-    echo "saved_board[$i]: ${saved_board[$i]}"
-  done
-
-  echo "saved_player_turn: $saved_player_turn"
+  play_game "$saved_player_turn"
   exit 0
-
 }
 
 function validate_board {
@@ -222,8 +280,6 @@ function validate_board {
 
   local error_message="Your save file is corrupted, board is invalid!"
 
-  echo "Length: ${#saved_board[@]}"
-  echo "Expected length: $((rows*columns))"
   if [ ${#saved_board[@]} -ne $((rows*columns)) ]; then
     echo "$error_message"
     exit 1
@@ -249,7 +305,7 @@ function validate_player_turn {
 }
 
 function save_game  {
-    local player_turn=$1
+  local player_turn=$1
 
   echo "Enter the name of the file you want to save the game in: "
   read -r file
@@ -257,9 +313,9 @@ function save_game  {
   echo "Saving the game in $file..."
 
   {
-  echo "${board[@]}"
-  echo "$player_turn"
-} > "file".txt
+    echo "${board[@]}"
+    echo "$player_turn"
+  } > "$file".txt
 
   echo "Game saved successfully!, type 'continue' to continue playing or anything else to exit:"
   read -r command
@@ -271,18 +327,21 @@ function save_game  {
   exit 0
 }
 
-echo "Hello, welcome to Tic-Tac-Toe game!"
+function init {
+  echo "Hello, welcome to Tic-Tac-Toe game!"
 
-echo "Type 'new' to start a new game or 'load' to load a saved game: "
-read -r command
+  echo "Type 'new' to start a new game or 'load' to load a saved game: "
+  read -r command
 
-if [ "$command" = "new" ]; then
-  initialize_game
-elif [ "$command" = "load" ]; then
-  load_game
-else
-  echo "Invalid command, exiting..."
-  exit 1
-fi
+  if [ "$command" = "new" ]; then
+    new_game
+  elif [ "$command" = "load" ]; then
+    load_game
+  else
+    echo "Invalid command, exiting..."
+    exit 1
+  fi
+  exit 0
+}
 
-play_game
+init
