@@ -73,7 +73,66 @@ function print_symbol {
 
 # TODO: Implement this function based on the game rules with the current board state (1D array)
 function check_winner {
-  echo "Checking winner..."
+
+  # Check rows
+  for ((i=0; i<rows; i++)); do
+    local row=$((i*columns))
+    if [ ${board[$row]} -eq $x_player ] && [ ${board[$row+1]} -eq $x_player ] && [ ${board[$row+2]} -eq $x_player ]; then
+      echo "First player wins [X]!"
+      exit 0
+    elif [ ${board[$row]} -eq $o_player ] && [ ${board[$row+1]} -eq $o_player ] && [ ${board[$row+2]} -eq $o_player ]; then
+      echo "Second player wins [O]!"
+      exit 0
+    fi
+  done
+
+  # Check columns
+  for ((i=0; i<columns; i++)); do
+    if [ ${board[$i]} -eq $x_player ] && [ ${board[$i+3]} -eq $x_player ] && [ ${board[$i+6]} -eq $x_player ]; then
+      echo "First player wins [X]!"
+      exit 0
+    elif [ ${board[$i]} -eq $o_player ] && [ ${board[$i+3]} -eq $o_player ] && [ ${board[$i+6]} -eq $o_player ]; then
+      echo "Second player wins [O]!"
+      exit 0
+    fi
+  done
+
+  # Check first diagonal
+  if [ ${board[0]} -eq $x_player ] && [ ${board[4]} -eq $x_player ] && [ ${board[8]} -eq $x_player ]; then
+    echo "First player wins [X]!"
+    exit 0
+  elif [ ${board[0]} -eq $o_player ] && [ ${board[4]} -eq $o_player ] && [ ${board[8]} -eq $o_player ]; then
+    echo "Second player wins [O]!"
+    exit 0
+  fi
+
+  # Check second diagonal
+  if [ ${board[2]} -eq $x_player ] && [ ${board[4]} -eq $x_player ] && [ ${board[6]} -eq $x_player ]; then
+    echo "First player wins [X]!"
+    exit 0
+  elif [ ${board[2]} -eq $o_player ] && [ ${board[4]} -eq $o_player ] && [ ${board[6]} -eq $o_player ]; then
+    echo "Second player wins [O]!"
+    exit 0
+  fi
+}
+
+function check_draw {
+  local max=$((rows*columns))
+  local is_full=true
+
+  for ((i=0; i<max; i++)); do
+    if [ ${board[$i]} -eq $empty ]; then
+      is_full=false
+      break
+    fi
+  done
+
+  echo "is_full: $is_full"
+
+  if [ "$is_full" = true ]; then
+    echo "It's a draw!"
+    exit 0
+  fi
 }
 
 function player_move {
@@ -110,6 +169,7 @@ function player_move {
   print_matrix
 
   check_winner "$player"
+  check_draw
 }
 
 function play_game {
